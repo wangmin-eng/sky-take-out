@@ -1,0 +1,22 @@
+package com.sky.mapper;
+
+import com.sky.entity.DishFlavor;
+import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
+
+/**
+ * @author Wangmin
+ * @date 2025/8/26
+ * @Description
+ */
+@Mapper
+public interface DishFlavorMapper {
+
+
+    /**
+     * 批量插入口味数据
+     * @param flavors
+     */
+    void insertBatch(List<DishFlavor> flavors);
+}
