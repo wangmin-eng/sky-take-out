@@ -35,10 +35,9 @@ public class DishController {
         dish.setCategoryId(categoryId);
         dish.setStatus(StatusConstant.ENABLE);//查询起售中的菜品
 
-//        List<DishVO> list = dishService.listWithFlavor(dish);
+        List<DishVO> list = dishService.listWithFlavor(dish);
 
-//        return Result.success(list);
-        return null;
+        return Result.success(list);
     }
 
 }
