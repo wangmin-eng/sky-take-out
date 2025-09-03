@@ -11,9 +11,11 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 
 /**
@@ -32,6 +34,20 @@ public class DishController {
     @Autowired
     private DishService dishService;
 
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+    /**
+     * 清理内存
+     * @param patter
+     */
+    private void cleanCache(String patter) {
+        log.info("清理所有缓存");
+        Set keys = redisTemplate.keys(patter);
+        redisTemplate.delete(keys);
+    }
+
+
     /**
      *新增菜品
      * @param dishDTO
@@ -42,6 +58,11 @@ public class DishController {
     public Result save(@RequestBody DishDTO dishDTO) {
         log.info("新增菜品:{}", dishDTO);
         dishService.saveWithFlavor(dishDTO);
+
+        //清理缓存数据
+        String key = "dish_"  + dishDTO.getCategoryId();
+        cleanCache(key);
+
         return Result.success();
     }
 
@@ -69,6 +90,10 @@ public class DishController {
     public Result delete(@RequestParam List<Long> ids){
         log.info("菜品批量删除:{}", ids);
         dishService.deleteBatch(ids);
+
+        // TODO 批量删除应该清理删除的缓存，而不是全部，这里先用全部
+        cleanCache("dish_*");
+
         return Result.success();
     }
 
@@ -78,7 +103,7 @@ public class DishController {
      * @return
      */
     @GetMapping("/{id}")
-    @ApiOperation("工具id查询菜品")
+    @ApiOperation("根据id查询菜品")
     public Result<DishVO> getById(@PathVariable Long id){
         log.info("根据id查询菜品:{}", id);
         DishVO dishVO = dishService.getByIdWithFlavor(id);
@@ -95,6 +120,10 @@ public class DishController {
     public Result update(@RequestBody DishDTO dishDTO){
         log.info("修改菜品:{}", dishDTO);
         dishService.updateWithFlavor(dishDTO);
+
+        // TODO 修改了菜品的分类会影响多份缓存  but 这里先清理全部缓存有待优化
+        cleanCache("dish_*");
+
         return Result.success();
     }
 
@@ -109,5 +138,24 @@ public class DishController {
         log.info("根据分类id查询菜品:{}", categoryId);
         List<Dish> list = dishService.list(categoryId);
         return Result.success(list);
+    }
+
+    /**
+     * 菜品启售或停售
+     * @param status
+     * @param id
+     * @return
+     */
+    @PostMapping("/status/{status}")
+    @ApiOperation("起售或停售")
+    public Result startOrStop(@PathVariable Integer status
+                                ,Long id){
+        log.info("起售或停售:{},{}", status, id);
+        dishService.startOrStop(status, id);
+
+        // TODO 将所有的菜品缓存数据清理 有待优化
+        cleanCache("dish_*");
+
+        return Result.success();
     }
 }
