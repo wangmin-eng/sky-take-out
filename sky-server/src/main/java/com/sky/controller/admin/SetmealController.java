@@ -29,8 +29,7 @@ public class SetmealController {
 
     @Autowired
     protected SetmealService setmealService;
-    @Autowired
-    private SetmealMapper setmealMapper;
+
 
     /**
      * 新增套餐
