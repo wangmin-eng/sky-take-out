@@ -2,8 +2,11 @@ package com.sky.service.impl;
 
 import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import com.sky.constant.MessageConstant;
 import com.sky.context.BaseContext;
+import com.sky.dto.OrdersPageQueryDTO;
 import com.sky.dto.OrdersPaymentDTO;
 import com.sky.dto.OrdersSubmitDTO;
 import com.sky.entity.*;
@@ -11,12 +14,15 @@ import com.sky.exception.AddressBookBusinessException;
 import com.sky.exception.OrderBusinessException;
 import com.sky.exception.ShoppingCartBusinessException;
 import com.sky.mapper.*;
+import com.sky.result.PageResult;
 import com.sky.service.OrderService;
 import com.sky.utils.WeChatPayUtil;
 import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderSubmitVO;
+import com.sky.vo.OrderVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author Wangmin
@@ -90,6 +97,13 @@ public class OrderServiceImpl implements OrderService {
         orders.setPhone(addressBook.getPhone());
         orders.setConsignee(addressBook.getConsignee());
         orders.setUserId(userId);
+
+        // 设置地址
+        String address = addressBook.getProvinceName() +
+                         addressBook.getCityName() +
+                         addressBook.getDistrictName() +
+                         addressBook.getDetail();
+        orders.setAddress(address);
 
 
         orderMapper.insert(orders);
@@ -170,5 +184,149 @@ public class OrderServiceImpl implements OrderService {
 
         orderMapper.update(orders);
     }
+
+    /**
+     * 用户端查询订单
+     * @param ordersPageQueryDTO
+     * @return
+     */
+    @Override
+    public PageResult pageQuery4User(OrdersPageQueryDTO  ordersPageQueryDTO) {
+        PageHelper.startPage(ordersPageQueryDTO.getPage(), ordersPageQueryDTO.getPageSize());
+
+        Long id = BaseContext.getCurrentId();
+        ordersPageQueryDTO.setUserId(id);
+
+
+        Page<Orders> page = orderMapper.pageQuery(ordersPageQueryDTO);
+
+        List<Orders> ordersList = new ArrayList<>();
+
+        if (page != null && page.getTotal() > 0) {
+            for (Orders orders : page.getResult()) {
+                Long ordersId = orders.getId();
+
+                List<OrderDetail> orderDetails = orderDetailMapper.getByOrderId(ordersId);
+
+                OrderVO orderVO = new OrderVO();
+                BeanUtils.copyProperties(orders, orderVO);
+                orderVO.setOrderDetailList(orderDetails);
+
+                ordersList.add(orderVO);
+            }
+        }
+
+
+        return new PageResult(page.getTotal(), ordersList);
+    }
+
+    /**
+     * 查询订单详情
+     * @param id
+     * @return OrderVO 即订单详情
+     */
+    @Override
+    public OrderVO getDetailByOrderId(Long id) {
+        Orders orders = orderMapper.getById(id);
+
+        List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(id);
+
+        OrderVO orderVO = new OrderVO();
+        BeanUtils.copyProperties(orders, orderVO);
+        orderVO.setOrderDetailList(orderDetailList);
+        return orderVO;
+    }
+
+    /**
+     * 取消订单
+     * @param id
+     */
+    @Override
+    public void userCancelById(Long id) {
+        //获取数据库中的订单
+        Orders ordersInDB = orderMapper.getById(id);
+
+        //校验订单是否存在
+        if (ordersInDB == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        //订单状态：  1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
+        if (ordersInDB.getStatus() > Orders.TO_BE_CONFIRMED) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+
+
+        Orders orders = new Orders();
+        orders.setId(id);
+
+        //待接单状态下取消，需要退款
+        if (ordersInDB.getStatus().equals(Orders.TO_BE_CONFIRMED)) {
+            // TODO调用微信支付接口退款
+            try {
+                weChatPayUtil.refund(
+                        ordersInDB.getNumber(),
+                        ordersInDB.getNumber(),
+                        new BigDecimal(0.01),
+                        new BigDecimal(0.01)
+                );
+                //支付状态改为 退款
+                orders.setPayStatus(Orders.REFUND);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        //更新订单状态，取消原因，取消时间
+        orders.setStatus(Orders.CANCELLED);
+        orders.setCancelReason("用户取消订单");
+        orders.setCheckoutTime(LocalDateTime.now());
+        orderMapper.update(orders);
+
+
+    }
+
+    /**
+     * 再来一单
+     * @param id
+     */
+    @Override
+    public void repetition(Long id) {
+        //获取当前用户id
+        Long userId = BaseContext.getCurrentId();
+
+        //根据订单id查询当前订单
+        List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(id);
+
+        //将订单详情对象转化为购物车对象
+        List<ShoppingCart> shoppingCartList = orderDetailList.stream().map(orderDetail -> {
+            ShoppingCart shoppingCart = new ShoppingCart();
+
+            //复制除了id的属性
+            BeanUtils.copyProperties(orderDetail, shoppingCart, "id");
+            shoppingCart.setUserId(userId);
+            shoppingCart.setCreateTime(LocalDateTime.now());
+
+            return shoppingCart;
+        }).collect(Collectors.toList());
+        /*上面这个写法的传统写法
+            List<ShoppingCart> shoppingCartList = new ArrayList<>();
+            for (OrderDetail x : orderDetailList) {
+                ShoppingCart shoppingCart = new ShoppingCart();
+
+                // 复制除id外的所有属性
+                BeanUtils.copyProperties(x, shoppingCart, "id");
+
+                shoppingCart.setUserId(userId);
+                shoppingCart.setCreateTime(LocalDateTime.now());
+
+                shoppingCartList.add(shoppingCart);
+            }
+
+         */
+
+        //将购物车对象添加到数据库
+        shoppingCartMapper.insertBatch(shoppingCartList);
+    }
+
 
 }
