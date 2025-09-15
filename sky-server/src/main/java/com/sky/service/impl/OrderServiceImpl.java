@@ -19,6 +19,7 @@ import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderVO;
+import com.sky.websocket.WebSocketServer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -59,8 +62,12 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private WeChatPayUtil weChatPayUtil;
 
+    @Autowired
+    private WebSocketServer webSocketServer;
+
     /**
-     *用户下单
+     * 用户下单
+     *
      * @param ordersSubmitDTO
      * @return
      */
@@ -101,9 +108,9 @@ public class OrderServiceImpl implements OrderService {
 
         // 设置地址
         String address = addressBook.getProvinceName() +
-                         addressBook.getCityName() +
-                         addressBook.getDistrictName() +
-                         addressBook.getDetail();
+                addressBook.getCityName() +
+                addressBook.getDistrictName() +
+                addressBook.getDetail();
         orders.setAddress(address);
 
 
@@ -184,15 +191,25 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         orderMapper.update(orders);
+
+        //通过websoket向客户端浏览器推送消息 type orderId content
+        Map map = new HashMap();
+        map.put("type", 1);//1.表示来单提醒 2表示客户催单
+        map.put("orderId", ordersDB.getId());
+        map.put("content", "订单号" + outTradeNo);
+
+        String json = JSONObject.toJSONString(map);
+        webSocketServer.sendToAllClient(json);
     }
 
     /**
      * 用户端查询订单
+     *
      * @param ordersPageQueryDTO
      * @return
      */
     @Override
-    public PageResult pageQuery4User(OrdersPageQueryDTO  ordersPageQueryDTO) {
+    public PageResult pageQuery4User(OrdersPageQueryDTO ordersPageQueryDTO) {
         PageHelper.startPage(ordersPageQueryDTO.getPage(), ordersPageQueryDTO.getPageSize());
 
         Long id = BaseContext.getCurrentId();
@@ -223,6 +240,7 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 查询订单详情
+     *
      * @param id
      * @return OrderVO 即订单详情
      */
@@ -240,6 +258,7 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 取消订单
+     *
      * @param id
      */
     @Override
@@ -288,6 +307,7 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 再来一单
+     *
      * @param id
      */
     @Override
@@ -331,6 +351,7 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 管理端订单搜索
+     *
      * @param ordersPageQueryDTO
      * @return
      */
@@ -342,11 +363,12 @@ public class OrderServiceImpl implements OrderService {
 
         //部分订单状态，需要额外返回订单菜品信息，将Orders转化为 OrdersVO
         //将操作提取成方法
-        List<OrderVO>  orderVOList = getOrderVOList(ordersPage);
+        List<OrderVO> orderVOList = getOrderVOList(ordersPage);
 
 
         return new PageResult(ordersPage.getTotal(), orderVOList);
     }
+
     private List<OrderVO> getOrderVOList(Page<Orders> ordersPage) {
         List<OrderVO> orderVOList = new ArrayList<>();
         List<Orders> ordersList = ordersPage.getResult();
@@ -365,9 +387,10 @@ public class OrderServiceImpl implements OrderService {
         }
         return orderVOList;
     }
+
     private String getOrderDishesStr(Orders orders) {
         List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(orders.getId());
-        List<String> orderDishesList = orderDetailList.stream().map(orderDetail ->{
+        List<String> orderDishesList = orderDetailList.stream().map(orderDetail -> {
             String orderDishes = orderDetail.getName() + "*" + orderDetail.getNumber() + ";";
             return orderDishes;
         }).collect(Collectors.toList());
@@ -379,6 +402,7 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 订单状态统计
+     *
      * @return
      */
     @Override
@@ -397,6 +421,7 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 订单详情
+     *
      * @param id
      * @return
      */
@@ -410,11 +435,12 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 接单
+     *
      * @param ordersConfirmDTO
      */
     @Override
     public void confirm(OrdersConfirmDTO ordersConfirmDTO) {
-        Orders orders= Orders.builder()
+        Orders orders = Orders.builder()
                 .id(ordersConfirmDTO.getId())
                 .status(Orders.CONFIRMED)
                 .build();
@@ -425,6 +451,7 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 拒单
+     *
      * @param ordersRejectionDTO
      */
     @Override
@@ -432,7 +459,7 @@ public class OrderServiceImpl implements OrderService {
         Orders ordersInDB = orderMapper.getById(ordersRejectionDTO.getId());
 
         //订单只有存在 2待接单 才可以拒单
-        if(ordersInDB == null || !ordersInDB.getStatus().equals(Orders.TO_BE_CONFIRMED)) {
+        if (ordersInDB == null || !ordersInDB.getStatus().equals(Orders.TO_BE_CONFIRMED)) {
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
         }
 
@@ -459,6 +486,7 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 取消订单
+     *
      * @param ordersCancelDTO
      */
     @Override
@@ -469,13 +497,13 @@ public class OrderServiceImpl implements OrderService {
         if (ordersInDB.getPayStatus() == Orders.PAID) {
             String refund = null;
 
-                refund = weChatPayUtil.refund(
-                        ordersInDB.getNumber(),
-                        ordersInDB.getNumber(),
-                        //TODO 金额用的测试数据
-                        new BigDecimal(0.01),
-                        new BigDecimal(0.01)
-                );
+            refund = weChatPayUtil.refund(
+                    ordersInDB.getNumber(),
+                    ordersInDB.getNumber(),
+                    //TODO 金额用的测试数据
+                    new BigDecimal(0.01),
+                    new BigDecimal(0.01)
+            );
 
             log.info("申请退款{}", refund);
         }
@@ -491,6 +519,7 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 派送订单
+     *
      * @param id
      */
     @Override
@@ -511,6 +540,7 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 完成订单
+     *
      * @param id
      */
     @Override
