@@ -1,10 +1,14 @@
 package com.sky.mapper;
 
 import com.sky.entity.User;
+import com.sky.query.UserDataRangeQuery;
+import com.sky.query.UserDataRangeResult;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * @author Wangmin
@@ -42,4 +46,19 @@ public interface UserMapper {
      * @return
      */
     Integer countUserByTimeMap(HashMap dateMap);
+
+    /**
+     * 获取批量统计数据
+     * @param rangeQuery
+     * @return
+     */
+    List<UserDataRangeResult> countUserBatch(UserDataRangeQuery rangeQuery);
+
+    /**
+     * 统计该日期之前一共有多少用户
+     * @param beginTime
+     * @return
+     */
+    @Select("select count(id) as total from user where create_time < #{beginTime}")
+    Integer countUserBeforeDate(LocalDateTime beginTime);
 }

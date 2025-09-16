@@ -3,7 +3,10 @@ package com.sky.service.impl;
 import com.sky.entity.Orders;
 import com.sky.mapper.OrderMapper;
 import com.sky.mapper.UserMapper;
+import com.sky.query.OrderDataRangeResult;
 import com.sky.query.OrderDateRangeQuery;
+import com.sky.query.UserDataRangeQuery;
+import com.sky.query.UserDataRangeResult;
 import com.sky.service.ReportService;
 import com.sky.vo.TurnoverReportVO;
 import com.sky.vo.UserReportVO;
@@ -46,6 +49,9 @@ public class ReportServiceImpl implements ReportService {
         //金额查询
         List<BigDecimal> turnoverList = new ArrayList<>();
 
+        LocalDateTime beginTime = LocalDateTime.of(begin, LocalTime.MIN);
+        LocalDateTime endTime = LocalDateTime.of(end, LocalTime.MAX);
+
         dateList.add(begin);
         while ( !begin.equals(end) ) {
             begin = begin.plusDays(1);
@@ -53,8 +59,8 @@ public class ReportServiceImpl implements ReportService {
         }
 
 
-
-        for (LocalDate date: dateList) {
+        //旧版本
+/*        for (LocalDate date: dateList) {
             LocalDateTime beginTime = LocalDateTime.of(date, LocalTime.MIN);
             LocalDateTime endTime = LocalDateTime.of(date, LocalTime.MAX);
 
@@ -68,34 +74,30 @@ public class ReportServiceImpl implements ReportService {
                 turnover = BigDecimal.ZERO;
             }
             turnoverList.add(turnover);
-        }
-
-        //TODO优化查询逻辑 直接给初始和结束日期，返回一个List列表按时间升序给出 营业总金额
-        /*List<OrderDateRangeQuery> dateTimeList = new ArrayList<>();
-        for (LocalDate date: dateList) {
-            LocalDateTime beginTime = LocalDateTime.of(date, LocalTime.MIN);
-            LocalDateTime endTime = LocalDateTime.of(date, LocalTime.MAX);
-
-            OrderDateRangeQuery dateRangeQuery = OrderDateRangeQuery.builder()
-                    .begin(beginTime)
-                    .end(endTime)
-                    .status(Orders.COMPLETED)
-                    .build();
-
-            dateTimeList.add(dateRangeQuery);
-
-        }
-        turnoverList = orderMapper.sumAmountByDateMapBatch(dateTimeList);
-        for (BigDecimal turnover: turnoverList ) {
-            if (turnover == null) {
-                turnover = BigDecimal.ZERO;
-            }
-            turnoverList.add(turnover);
         }*/
 
+        //DONE ：2025年9月16日23点52分 优化查询逻辑 直接给初始和结束日期，返回一个List列表按时间升序给出 营业总金额
+        OrderDateRangeQuery dateRangeQuery = OrderDateRangeQuery.builder()
+                .begin(beginTime)
+                .end(endTime)
+                .status(Orders.COMPLETED)
+                .build();
 
-
-
+        List<OrderDataRangeResult> orderDRRList = orderMapper.sumAmountByDateMapBatch(dateRangeQuery);
+        for (LocalDate localDate : dateList){
+            //防止orderDRRList返回 null
+            if(orderDRRList.isEmpty()){
+                turnoverList.add(BigDecimal.ZERO);
+            } else {
+                for (OrderDataRangeResult  orderDataRangeResult : orderDRRList){
+                    if(localDate.equals(orderDataRangeResult.getDate())){
+                        turnoverList.add(orderDataRangeResult.getAmount());
+                    }else {
+                        turnoverList.add(BigDecimal.ZERO);
+                    }
+                }
+            }
+        }
 
         return TurnoverReportVO.builder()
                 .dateList(StringUtils.join(dateList, ","))
@@ -118,6 +120,9 @@ public class ReportServiceImpl implements ReportService {
         //新增用户
         List<Integer> newList = new ArrayList<>();
 
+        LocalDateTime beginTime = LocalDateTime.of(begin, LocalTime.MIN);
+        LocalDateTime endTime = LocalDateTime.of(end, LocalTime.MAX);
+
         //日期数据处理
         dateList.add(begin);
         while ( !begin.equals(end) ) {
@@ -125,9 +130,8 @@ public class ReportServiceImpl implements ReportService {
             dateList.add(begin);
         }
 
-
-
-        for (LocalDate date: dateList) {
+        //旧版本
+        /*for (LocalDate date: dateList) {
             LocalDateTime beginTime = LocalDateTime.of(date, LocalTime.MIN);
             LocalDateTime endTime = LocalDateTime.of(date, LocalTime.MAX);
 
@@ -148,10 +152,35 @@ public class ReportServiceImpl implements ReportService {
                 newUser = 0;
             }
             newList.add(newUser);
+        }*/
+
+        //DONE 2025年9月17日00点40分 似乎可以优化查询问题
+        //查询新增用户
+        UserDataRangeQuery rangeQuery = UserDataRangeQuery.builder()
+                .beginTime(beginTime)
+                .endTime(endTime)
+                .build();
+
+        List<UserDataRangeResult> resultList = userMapper.countUserBatch(rangeQuery);
+        for  (LocalDate localDate : dateList){
+            if(resultList.isEmpty()){
+                newList.add(0);
+            }else  {
+                for (UserDataRangeResult result : resultList){
+                    if(localDate.equals(result.getDate())){
+                        newList.add(result.getTotal());
+                    }else {
+                        newList.add(0);
+                    }
+                }
+            }
         }
-
-        //TODO 似乎可以优化查询问题
-
+        //查询截止时间所有用户
+        Integer totalBefore = userMapper.countUserBeforeDate(beginTime);
+        for (Integer newUser : newList) {
+            Integer sumUser = totalBefore + newUser;
+            userList.add(sumUser);
+        }
 
         return UserReportVO.builder()
                 .dateList(StringUtils.join(dateList, ","))

@@ -3,6 +3,7 @@ package com.sky.mapper;
 import com.github.pagehelper.Page;
 import com.sky.dto.OrdersPageQueryDTO;
 import com.sky.entity.Orders;
+import com.sky.query.OrderDataRangeResult;
 import com.sky.query.OrderDateRangeQuery;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -80,8 +81,8 @@ public interface OrderMapper {
 
     /**
      * 优化统计营业额
-     * @param queries
+     * @param
      * @return
      */
-    List<BigDecimal> sumAmountByDateMapBatch(@Param("queries") List<OrderDateRangeQuery> queries);
+    List<OrderDataRangeResult> sumAmountByDateMapBatch(OrderDateRangeQuery orderDateRangeQuery);
 }

@@ -5,7 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * @author Wangmin
@@ -16,9 +17,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderDateRangeQuery {
-    private LocalDateTime begin;
-    private LocalDateTime end;
-    private Integer status;
-
+public class OrderDataRangeResult {
+    private LocalDate date;
+    private BigDecimal amount;
 }

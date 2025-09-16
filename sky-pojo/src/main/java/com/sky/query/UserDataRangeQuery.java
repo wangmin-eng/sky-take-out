@@ -9,16 +9,14 @@ import java.time.LocalDateTime;
 
 /**
  * @author Wangmin
- * @date 2025/9/16
+ * @date 2025/9/17
  * @Description
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderDateRangeQuery {
-    private LocalDateTime begin;
-    private LocalDateTime end;
-    private Integer status;
-
+public class UserDataRangeQuery {
+    private LocalDateTime beginTime;
+    private LocalDateTime endTime;
 }
