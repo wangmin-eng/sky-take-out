@@ -4,6 +4,8 @@ import com.sky.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
+import java.util.HashMap;
+
 /**
  * @author Wangmin
  * @date 2025/9/1
@@ -33,4 +35,11 @@ public interface UserMapper {
      */
     @Select("select * from user where id = #{id}")
     User getById(Long id);
+
+    /**
+     * 用户统计
+     * @param dateMap
+     * @return
+     */
+    Integer countUserByTimeMap(HashMap dateMap);
 }

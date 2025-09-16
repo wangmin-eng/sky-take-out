@@ -3,11 +3,15 @@ package com.sky.mapper;
 import com.github.pagehelper.Page;
 import com.sky.dto.OrdersPageQueryDTO;
 import com.sky.entity.Orders;
+import com.sky.query.OrderDateRangeQuery;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Wangmin
@@ -66,4 +70,18 @@ public interface OrderMapper {
      */
     @Select("select * from orders where status = #{status} and order_time < #{orderTime}")
     List<Orders> getByStatusAndOrderTimeLT(Integer status, LocalDateTime orderTime);
+
+    /**
+     * 统计营业额
+     * @param dateMap
+     * @return
+     */
+    BigDecimal sumAmountByDateMap(Map dateMap);
+
+    /**
+     * 优化统计营业额
+     * @param queries
+     * @return
+     */
+    List<BigDecimal> sumAmountByDateMapBatch(@Param("queries") List<OrderDateRangeQuery> queries);
 }
