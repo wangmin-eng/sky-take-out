@@ -3,11 +3,9 @@ package com.sky.service.impl;
 import com.sky.entity.Orders;
 import com.sky.mapper.OrderMapper;
 import com.sky.mapper.UserMapper;
-import com.sky.query.OrderDataRangeResult;
-import com.sky.query.OrderDateRangeQuery;
-import com.sky.query.UserDataRangeQuery;
-import com.sky.query.UserDataRangeResult;
+import com.sky.query.*;
 import com.sky.service.ReportService;
+import com.sky.vo.OrderReportVO;
 import com.sky.vo.TurnoverReportVO;
 import com.sky.vo.UserReportVO;
 import org.apache.commons.lang3.StringUtils;
@@ -19,9 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author Wangmin
@@ -83,17 +79,34 @@ public class ReportServiceImpl implements ReportService {
                 .status(Orders.COMPLETED)
                 .build();
 
-        List<OrderDataRangeResult> orderDRRList = orderMapper.sumAmountByDateMapBatch(dateRangeQuery);
-        for (LocalDate localDate : dateList){
+        List<OrderDateRangeResult> orderDRRList = orderMapper.sumAmountByDateMapBatch(dateRangeQuery);
+        /*for (LocalDate localDate : dateList){
             //防止orderDRRList返回 null
             if(orderDRRList.isEmpty()){
                 turnoverList.add(BigDecimal.ZERO);
             } else {
-                for (OrderDataRangeResult  orderDataRangeResult : orderDRRList){
-                    if(localDate.equals(orderDataRangeResult.getDate())){
-                        turnoverList.add(orderDataRangeResult.getAmount());
-                    }else {
+                for (OrderDateRangeResult orderDateRangeResult : orderDRRList){
+                    if(localDate.equals(orderDateRangeResult.getDate())){
+                        turnoverList.add(orderDateRangeResult.getAmount());
+                        break;
+                    } else {
                         turnoverList.add(BigDecimal.ZERO);
+
+                        break;
+                    }
+                }
+            }
+
+        }*/
+        for (int i = 0; i < dateList.size(); i++) {
+            if (orderDRRList.isEmpty()){
+                turnoverList.add(BigDecimal.ZERO);
+            } else {
+                turnoverList.add(BigDecimal.ZERO);
+                for (OrderDateRangeResult orderDateRangeResult : orderDRRList) {
+                    if (dateList.get(i).equals(orderDateRangeResult.getDate())){
+                        turnoverList.set(i,orderDateRangeResult.getAmount());
+                        break;
                     }
                 }
             }
@@ -156,21 +169,22 @@ public class ReportServiceImpl implements ReportService {
 
         //DONE 2025年9月17日00点40分 似乎可以优化查询问题
         //查询新增用户
-        UserDataRangeQuery rangeQuery = UserDataRangeQuery.builder()
+        UserDateRangeQuery rangeQuery = UserDateRangeQuery.builder()
                 .beginTime(beginTime)
                 .endTime(endTime)
                 .build();
 
-        List<UserDataRangeResult> resultList = userMapper.countUserBatch(rangeQuery);
-        for  (LocalDate localDate : dateList){
+        List<UserDateRangeResult> resultList = userMapper.countUserBatch(rangeQuery);
+
+        for  (int i = 0; i < dateList.size(); i++){
             if(resultList.isEmpty()){
                 newList.add(0);
             }else  {
-                for (UserDataRangeResult result : resultList){
-                    if(localDate.equals(result.getDate())){
-                        newList.add(result.getTotal());
-                    }else {
-                        newList.add(0);
+                newList.add(0);
+                for (UserDateRangeResult result : resultList){
+                    if(dateList.get(i).equals(result.getDate())){
+                        newList.set(i,result.getTotal());
+                        break;
                     }
                 }
             }
@@ -178,14 +192,116 @@ public class ReportServiceImpl implements ReportService {
         //查询截止时间所有用户
         Integer totalBefore = userMapper.countUserBeforeDate(beginTime);
         for (Integer newUser : newList) {
-            Integer sumUser = totalBefore + newUser;
-            userList.add(sumUser);
+            totalBefore = totalBefore + newUser;
+            userList.add(totalBefore);
         }
 
         return UserReportVO.builder()
                 .dateList(StringUtils.join(dateList, ","))
                 .totalUserList(StringUtils.join(userList, ","))
                 .newUserList(StringUtils.join(newList, ","))
+                .build();
+    }
+
+    /**
+     * 订单统计
+     * @param begin
+     * @param end
+     * @return
+     */
+    @Override
+    public OrderReportVO getOrderStatistics(LocalDate begin, LocalDate end) {
+        //日期
+        List<LocalDate> dateList = new ArrayList<>();
+
+        //每日订单数
+        List<Integer> orderCountList = new ArrayList<>();
+
+        //每日有效订单数，以逗号分隔，例如：20,21,10
+        List<Integer> validOrderCountList = new ArrayList<>();
+
+        //订单总数
+        Integer totalOrderCount;
+
+        //有效订单数
+        Integer validOrderCount;
+
+        //订单完成率
+        Double orderCompletionRate;
+
+        //数据日期时间区间
+        LocalDateTime beginTime = LocalDateTime.of(begin, LocalTime.MIN);
+        LocalDateTime endTime = LocalDateTime.of(end, LocalTime.MAX);
+
+        //日期数据处理
+        dateList.add(begin);
+        while ( !begin.equals(end) ) {
+            begin = begin.plusDays(1);
+            dateList.add(begin);
+        }
+
+        //封装了的查询参数 beginTime endTime status
+        OrderDateCountQuery countQuery = new OrderDateCountQuery();
+        countQuery.setBeginTime(beginTime);
+        countQuery.setEndTime(endTime);
+
+        //订单总数
+        totalOrderCount = orderMapper.countOrderTotalByDateAndStatus(countQuery);
+
+        //每日总订单
+        List<OrderDateCountDailyResult> dailyTotalResultList = orderMapper.countOrderDailyByDate(countQuery);
+
+        //设置完成参数
+        countQuery.setStatus(Orders.COMPLETED);
+
+        //有效订单数
+        validOrderCount = orderMapper.countOrderTotalByDateAndStatus(countQuery);
+
+        //订单完成率
+        try {
+            orderCompletionRate = validOrderCount.doubleValue() / totalOrderCount.doubleValue();
+        }  catch (Exception e) {
+            orderCompletionRate = null;
+            throw new RuntimeException("除数不能为0");
+        }
+
+
+        //每日有效订单
+        List<OrderDateCountDailyResult> dailyValidResultList = orderMapper.countOrderDailyByDate(countQuery);
+        for (int i = 0; i < dateList.size(); i++) {
+            if(dailyTotalResultList.isEmpty()){
+                orderCountList.add(0);
+            } else {
+                orderCountList.add(0);
+                for (OrderDateCountDailyResult dailyTotalResult : dailyTotalResultList){
+                    if(dateList.get(i).equals(dailyTotalResult.getDate())){
+                        orderCountList.set(i,dailyTotalResult.getCount());
+                        break;
+                    }
+                }
+            }
+
+            //每日有效订单
+            if (dailyValidResultList.isEmpty()){
+                validOrderCountList.add(0);
+            } else {
+                validOrderCountList.add(0);
+                for (OrderDateCountDailyResult dailyValidResult : dailyValidResultList){
+                    if(dateList.get(i).equals(dailyValidResult.getDate())){
+                        validOrderCountList.set(i,dailyValidResult.getCount());
+                        break;
+                    }
+                }
+            }
+        }
+
+        return OrderReportVO.builder()
+                .dateList(StringUtils.join(dateList, ","))
+                .orderCountList(StringUtils.join(orderCountList, ","))
+                .validOrderCountList(StringUtils.join(validOrderCountList, ","))
+                .totalOrderCount(totalOrderCount)
+                .validOrderCount(validOrderCount)
+                .orderCompletionRate(orderCompletionRate)
                 .build();
     }
 }

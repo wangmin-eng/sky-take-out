@@ -16,7 +16,9 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserDataRangeQuery {
+public class OrderDateCountQuery {
     private LocalDateTime beginTime;
     private LocalDateTime endTime;
+    private Integer status;
+
 }

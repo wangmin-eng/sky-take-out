@@ -84,7 +84,7 @@
             </if>
         </where>
     </select>
-    <select id="sumAmountByDateMapBatch" resultType="com.sky.query.OrderDataRangeResult">
+    <select id="sumAmountByDateMapBatch" resultType="com.sky.query.OrderDateRangeResult">
         SELECT  DATE(order_time)as date, COALESCE(SUM(amount), 0) as amount
         FROM orders
         <where>
@@ -100,6 +100,35 @@
         </where>
         GROUP BY DATE(order_time)
         order by order_time
+    </select>
+    <select id="countOrderDailyByDate" resultType="com.sky.query.OrderDateCountDailyResult">
+        select DATE(order_time) as date , COALESCE(count(id), 0) as count
+        from orders
+        <where>
+            <if test="beginTime != null">
+                order_time &gt;= #{beginTime}
+            </if>
+            <if test="endTime != null">
+                and order_time &lt;= #{endTime}
+            </if>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+        </where>
+        group by date
+    </select>
+
+    <select id="countOrderTotalByDateAndStatus" resultType="java.lang.Integer">
+        select count(id)
+        from orders
+        <where>
+            <if test="endTime != null">
+                order_time &lt;= #{endTime}
+            </if>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+        </where>
     </select>
 
 

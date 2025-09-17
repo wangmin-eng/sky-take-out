@@ -1,8 +1,8 @@
 package com.sky.mapper;
 
 import com.sky.entity.User;
-import com.sky.query.UserDataRangeQuery;
-import com.sky.query.UserDataRangeResult;
+import com.sky.query.UserDateRangeQuery;
+import com.sky.query.UserDateRangeResult;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
@@ -52,7 +52,7 @@ public interface UserMapper {
      * @param rangeQuery
      * @return
      */
-    List<UserDataRangeResult> countUserBatch(UserDataRangeQuery rangeQuery);
+    List<UserDateRangeResult> countUserBatch(UserDateRangeQuery rangeQuery);
 
     /**
      * 统计该日期之前一共有多少用户

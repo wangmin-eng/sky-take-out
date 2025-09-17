@@ -20,7 +20,7 @@
             </if>
         </where>
     </select>
-    <select id="countUserBatch" resultType="com.sky.query.UserDataRangeResult">
+    <select id="countUserBatch" resultType="com.sky.query.UserDateRangeResult">
         select DATE(create_time) as date , count(id) as total
         from user
         <where>

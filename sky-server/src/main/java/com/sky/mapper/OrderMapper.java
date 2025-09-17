@@ -3,10 +3,11 @@ package com.sky.mapper;
 import com.github.pagehelper.Page;
 import com.sky.dto.OrdersPageQueryDTO;
 import com.sky.entity.Orders;
-import com.sky.query.OrderDataRangeResult;
+import com.sky.query.OrderDateCountDailyResult;
+import com.sky.query.OrderDateCountQuery;
+import com.sky.query.OrderDateRangeResult;
 import com.sky.query.OrderDateRangeQuery;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.math.BigDecimal;
@@ -84,5 +85,19 @@ public interface OrderMapper {
      * @param
      * @return
      */
-    List<OrderDataRangeResult> sumAmountByDateMapBatch(OrderDateRangeQuery orderDateRangeQuery);
+    List<OrderDateRangeResult> sumAmountByDateMapBatch(OrderDateRangeQuery orderDateRangeQuery);
+
+    /**
+     * 每日订单统计
+     * @param orderDateCountQuery
+     * @return
+     */
+    List<OrderDateCountDailyResult> countOrderDailyByDate(OrderDateCountQuery orderDateCountQuery);
+
+    /**
+     * 统计不同状态的订单数
+     * @param countQuery
+     * @return
+     */
+    Integer countOrderTotalByDateAndStatus(OrderDateCountQuery countQuery);
 }

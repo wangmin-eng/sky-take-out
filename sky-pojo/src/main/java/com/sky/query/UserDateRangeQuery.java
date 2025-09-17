@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -17,8 +16,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserDataRangeResult {
-    private LocalDate date;
-    private Integer total;
-
+public class UserDateRangeQuery {
+    private LocalDateTime beginTime;
+    private LocalDateTime endTime;
 }

@@ -5,19 +5,19 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * @author Wangmin
- * @date 2025/9/16
+ * @date 2025/9/17
  * @Description
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderDataRangeResult {
+public class OrderDateCountDailyResult {
     private LocalDate date;
-    private BigDecimal amount;
+    private Integer count;
 }
