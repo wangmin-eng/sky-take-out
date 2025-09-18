@@ -1,6 +1,8 @@
 package com.sky.mapper;
 
 import com.sky.entity.OrderDetail;
+import com.sky.query.SalesTopQuery;
+import com.sky.query.SalesTopResult;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
@@ -26,4 +28,11 @@ public interface OrderDetailMapper {
      */
     @Select("select * from order_detail where order_id = #{ordersId}")
     List<OrderDetail> getByOrderId(Long ordersId);
+
+    /**
+     * 统计菜品销售数量
+     * @param salesTopQuery
+     * @return
+     */
+    List<SalesTopResult> countDishNumber(SalesTopQuery salesTopQuery);
 }

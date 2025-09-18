@@ -10,4 +10,25 @@
             </foreach>
         
     </insert>
+
+    <select id="countDishNumber" resultType="com.sky.query.SalesTopResult">
+        SELECT od.name as dishName , sum(od.number) as dishNumber
+        FROM `order_detail` od right JOIN orders o
+        on od.order_id = o.id
+        <where>
+            <if test="beginTime != null">
+                o.order_time &gt;= #{beginTime}
+            </if>
+            <if test="endTime != null">
+                and o.order_time &lt;= #{endTime}
+            </if>
+            <if test="status != null">
+                and o.status = #{status}
+            </if>
+        </where>
+        GROUP BY `dishName`
+        ORDER BY dishNumber desc
+        limit 0,10
+    </select>
+
 </mapper>

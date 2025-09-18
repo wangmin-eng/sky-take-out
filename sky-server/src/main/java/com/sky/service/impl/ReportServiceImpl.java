@@ -1,11 +1,13 @@
 package com.sky.service.impl;
 
 import com.sky.entity.Orders;
+import com.sky.mapper.OrderDetailMapper;
 import com.sky.mapper.OrderMapper;
 import com.sky.mapper.UserMapper;
 import com.sky.query.*;
 import com.sky.service.ReportService;
 import com.sky.vo.OrderReportVO;
+import com.sky.vo.SalesTop10ReportVO;
 import com.sky.vo.TurnoverReportVO;
 import com.sky.vo.UserReportVO;
 import org.apache.commons.lang3.StringUtils;
@@ -32,6 +34,9 @@ public class ReportServiceImpl implements ReportService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private OrderDetailMapper orderDetailMapper;
     /**
      *营业额统计
      * @param begin
@@ -80,6 +85,7 @@ public class ReportServiceImpl implements ReportService {
                 .build();
 
         List<OrderDateRangeResult> orderDRRList = orderMapper.sumAmountByDateMapBatch(dateRangeQuery);
+
         /*for (LocalDate localDate : dateList){
             //防止orderDRRList返回 null
             if(orderDRRList.isEmpty()){
@@ -268,7 +274,9 @@ public class ReportServiceImpl implements ReportService {
 
         //每日有效订单
         List<OrderDateCountDailyResult> dailyValidResultList = orderMapper.countOrderDailyByDate(countQuery);
+
         for (int i = 0; i < dateList.size(); i++) {
+            //每日总订单
             if(dailyTotalResultList.isEmpty()){
                 orderCountList.add(0);
             } else {
@@ -302,6 +310,43 @@ public class ReportServiceImpl implements ReportService {
                 .totalOrderCount(totalOrderCount)
                 .validOrderCount(validOrderCount)
                 .orderCompletionRate(orderCompletionRate)
+                .build();
+    }
+
+    /**
+     * 统计指定时间销量排名前10
+     * @param begin
+     * @param end
+     * @return
+     */
+    @Override
+    public SalesTop10ReportVO getSalesTop10(LocalDate begin, LocalDate end) {
+
+        LocalDateTime beginTime = LocalDateTime.of(begin, LocalTime.MIN);
+        LocalDateTime endTIme = LocalDateTime.of(end, LocalTime.MAX);
+
+        //商品名称列表
+        List<String> nameList = new ArrayList<>();
+
+        //商品销量
+        List<Integer> numberList = new ArrayList<>();
+
+        //查询条件封装成类
+        SalesTopQuery salesTopQuery = SalesTopQuery.builder()
+                .beginTime(beginTime)
+                .endTime(endTIme)
+                .status(Orders.COMPLETED)
+                .build();
+        //获取查询结果
+        List<SalesTopResult> salesTopResults = orderDetailMapper.countDishNumber(salesTopQuery);
+        for (SalesTopResult salesTopResult : salesTopResults) {
+            nameList.add(salesTopResult.getDishName());
+            numberList.add(salesTopResult.getDishNumber());
+        }
+
+        return SalesTop10ReportVO.builder()
+                .nameList(StringUtils.join(nameList, ","))
+                .numberList(StringUtils.join(numberList, ","))
                 .build();
     }
 }
