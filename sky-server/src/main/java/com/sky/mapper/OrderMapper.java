@@ -95,7 +95,7 @@ public interface OrderMapper {
     List<OrderDateCountDailyResult> countOrderDailyByDate(OrderDateCountQuery orderDateCountQuery);
 
     /**
-     * 统计不同状态的订单数
+     * 统计不同状态的订单总数
      * @param countQuery
      * @return
      */
