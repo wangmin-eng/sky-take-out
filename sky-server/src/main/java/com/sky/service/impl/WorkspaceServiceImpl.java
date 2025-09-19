@@ -40,15 +40,15 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Autowired
     private SetmealMapper setmealMapper;
 
-    //获得当天的开始时间
-    private final LocalDateTime beginTime = LocalDateTime.now().with(LocalTime.MIN);
-    //获得当天的结束时间
-    private final LocalDateTime endTime = LocalDateTime.now().with(LocalTime.MAX);
+//    //获得当天的开始时间
+//    private final LocalDateTime beginTime = LocalDateTime.now().with(LocalTime.MIN);
+//    //获得当天的结束时间
+//    private final LocalDateTime endTime = LocalDateTime.now().with(LocalTime.MAX);
     /**
      * 根据时间段统计营业数据
      * @return
      */
-    public BusinessDataVO getBusinessData() {
+    public BusinessDataVO getBusinessData(LocalDateTime beginTime,LocalDateTime endTime) {
         /**
          * 营业额：当日已完成订单的总金额
          * 有效订单：当日已完成订单的数量
@@ -130,12 +130,13 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     }
 
 
+
     /**
      * 查询订单管理数据
      *
      * @return
      */
-    public OrderOverViewVO getOrderOverView() {
+    public OrderOverViewVO getOrderOverView(LocalDateTime beginTime,LocalDateTime endTime) {
         OrderDateCountQuery countQuery = OrderDateCountQuery.builder()
                 .beginTime(beginTime)
                 .endTime(endTime)

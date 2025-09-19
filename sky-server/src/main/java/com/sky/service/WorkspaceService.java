@@ -12,13 +12,13 @@ public interface WorkspaceService {
      * 根据时间段统计营业数据
      * @return
      */
-    BusinessDataVO getBusinessData();
+    BusinessDataVO getBusinessData(LocalDateTime beginTime,LocalDateTime endTime);
 
     /**
      * 查询订单管理数据
      * @return
      */
-    OrderOverViewVO getOrderOverView();
+    OrderOverViewVO getOrderOverView(LocalDateTime beginTime,LocalDateTime endTime);
 
     /**
      * 查询菜品总览

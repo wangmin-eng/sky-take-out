@@ -35,8 +35,11 @@ public class WorkSpaceController {
     @GetMapping("/businessData")
     @ApiOperation("工作台今日数据查询")
     public Result<BusinessDataVO> businessData(){
-
-        BusinessDataVO businessDataVO = workspaceService.getBusinessData();
+        //获得当天的开始时间
+        LocalDateTime beginTime = LocalDateTime.now().with(LocalTime.MIN);
+        //获得当天的结束时间
+        LocalDateTime endTime = LocalDateTime.now().with(LocalTime.MAX);
+        BusinessDataVO businessDataVO = workspaceService.getBusinessData(beginTime,endTime);
         return Result.success(businessDataVO);
     }
 
@@ -47,7 +50,11 @@ public class WorkSpaceController {
     @GetMapping("/overviewOrders")
     @ApiOperation("查询订单管理数据")
     public Result<OrderOverViewVO> orderOverView(){
-        return Result.success(workspaceService.getOrderOverView());
+        //获得当天的开始时间
+        LocalDateTime beginTime = LocalDateTime.now().with(LocalTime.MIN);
+        //获得当天的结束时间
+        LocalDateTime endTime = LocalDateTime.now().with(LocalTime.MAX);
+        return Result.success(workspaceService.getOrderOverView(beginTime,endTime));
     }
 
     /**
