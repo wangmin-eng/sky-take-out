@@ -6,4 +6,3 @@
 **/test/
 sky-server/src/main/resources/application-dev.yml
 sky-server/src/main/resources/application-prod.yml
-sql/sky_take_out.sql
